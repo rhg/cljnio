@@ -43,6 +43,10 @@
 
 ;; High Level API
 (defn with-server*
+  "Takes an address (see cljnio.net/address)
+  and a unary funtion whose arg is a fn to stop the server
+  and which returns an unary function which receives an event vector.
+  Returns a function to stop the server."
   [addr make-handler]
   (let [assc (listen! addr)
         close! #(close! assc)]
@@ -50,8 +54,13 @@
     close!))
 
 (defmacro with-server
-  [addr client-sym & body]
-  `(let [f# (fn [~'close!]
-              (fn [~client-sym]
-                ~@body))]
-     (with-server* ~addr f#)))
+  "Like cljnio.server/with-server* but as a macro for convenience
+  (cljnio.serve/with-server [evt {:port 4004}]
+    (println (second evt)))"
+  [bdg & body]
+  {:pre [(= 2 (count bdg)) (vector? bdg)]}
+  (let [[client-sym addr] bdg]
+    `(let [f# (fn [~'&close!]
+                (fn [~client-sym]
+                  ~@body))]
+       (with-server* ~addr f#))))
